@@ -152,7 +152,7 @@ const y =
   (e.clientY - rect.top) *
   (canvasRef.current.height / rect.height);
 
-  console.log(rect.width, canvasRef.current.width);
+//   console.log(rect.width, canvasRef.current.width);
   const inside =
     x >= rect.left &&
     x <= rect.right &&
