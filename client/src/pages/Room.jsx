@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useRef, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -7,13 +8,16 @@ const socket = io("http://localhost:5000");
 
 // ✅ STABLE UID (NO DUPLICATES EVER)
 const getUID = () => {
-  let id = localStorage.getItem("uid");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("uid", id);
+  let uid = localStorage.getItem("uid");
+  if (!uid) {
+    uid = Math.random().toString(36).substring(2, 9);
+    localStorage.setItem("uid", uid);
   }
-  return id;
+  return uid;
 };
+
+const uid = getUID();
+
 
 function Room() {
   const { roomCode } = useParams();
@@ -36,12 +40,12 @@ function Room() {
 
   // ✅ JOIN ROOM
   useEffect(() => {
-    socket.emit("join-room", {
-      roomCode,
-      name: user.name,
-      uid,
-    });
-  }, [roomCode]);
+  socket.emit("join-room", {
+    roomCode,
+    name: user.name,
+    uid, // ✅ VERY IMPORTANT
+  });
+}, [roomCode]);
 
   // ✅ SOCKET EVENTS
   useEffect(() => {
@@ -102,16 +106,7 @@ function Room() {
     });
 
     // ✅ PARTICIPANTS + ROLE
-    socket.on("participants", (users) => {
-      const unique = Array.from(
-        new Map(users.map((u) => [u.uid, u])).values()
-      );
-
-      setParticipants(unique);
-
-      const me = unique.find((u) => u.uid === uid);
-      if (me) setMyRole(me.role);
-    });
+    
 
     // ✅ CURSOR RECEIVE
     socket.on("cursor-move", ({ id, x, y, name }) => {
@@ -134,20 +129,30 @@ function Room() {
 
   // ✅ FIXED CANVAS COORDS
   const getCoords = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) * (1200 / rect.width),
-      y: (e.clientY - rect.top) * (700 / rect.height),
-    };
+  const rect = canvasRef.current.getBoundingClientRect();
+
+  const scaleX = canvasRef.current.width / rect.width;
+  const scaleY = canvasRef.current.height / rect.height;
+
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY,
   };
+};
 
   // ✅ CURSOR SEND
   const handleCursor = (e) => {
   const rect = canvasRef.current.getBoundingClientRect();
 
-  const x = e.clientX;
-  const y = e.clientY;
+const x =
+  (e.clientX - rect.left) *
+  (canvasRef.current.width / rect.width);
 
+const y =
+  (e.clientY - rect.top) *
+  (canvasRef.current.height / rect.height);
+
+  console.log(rect.width, canvasRef.current.width);
   const inside =
     x >= rect.left &&
     x <= rect.right &&
@@ -245,6 +250,17 @@ function Room() {
     return copy;
   });
 });
+useEffect(() => {
+  socket.on("participants", (users) => {
+    setParticipants(users);
+
+    // ✅ SET MY ROLE AFTER REFRESH
+    const me = users.find((u) => u.uid === uid);
+    if (me) setMyRole(me.role);
+  });
+
+  return () => socket.off("participants");
+}, []);
 
   return (
     <div style={{ display: "flex", height: "100vh", background: "#1e1e1e" }}>
@@ -340,8 +356,8 @@ function Room() {
             width={1200}
             height={600}
             style={{
-              width: "90%",
-              maxWidth: "1200px",
+              width: "1200px",
+              height: "600px",
               background: "white",
               border: "2px solid #ccc",
               borderRadius: "8px",

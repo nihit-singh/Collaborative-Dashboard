@@ -10,6 +10,9 @@ import boardRoutes from "./routes/boardRoutes.js";
 
 dotenv.config();
 
+const userRoles = {}; 
+// structure: { roomCode: { uid: role } }
+
 const app = express();
 
 app.use(
@@ -42,57 +45,63 @@ io.on("connection", (socket) => {
 
   // ✅ JOIN ROOM
   socket.on("join-room", ({ roomCode, name, uid }) => {
-    socket.join(roomCode);
+  socket.join(roomCode);
 
-    if (!roomUsers[roomCode]) roomUsers[roomCode] = [];
-    if (!roomBoards[roomCode]) roomBoards[roomCode] = [];
+  if (!roomUsers[roomCode]) roomUsers[roomCode] = [];
+  if (!roomBoards[roomCode]) roomBoards[roomCode] = [];
+  if (!userRoles[roomCode]) userRoles[roomCode] = {};
 
-    // remove old instance
-    roomUsers[roomCode] = roomUsers[roomCode].filter(
-      (u) => u.uid !== uid
-    );
+  // 🔥 REMOVE OLD SOCKET INSTANCE (same uid)
+  roomUsers[roomCode] = roomUsers[roomCode].filter(
+    (u) => u.uid !== uid
+  );
 
-    // 🔥 SET CREATOR ONLY ONCE
-    if (!roomCreators[roomCode]) {
-      roomCreators[roomCode] = uid;
-    }
+  let role;
 
-    const role =
-      uid === roomCreators[roomCode] ? "creator" : "viewer";
+  // ✅ IF ROLE ALREADY EXISTS → USE IT
+  if (userRoles[roomCode][uid]) {
+    role = userRoles[roomCode][uid];
+  }
+  // ✅ FIRST USER → CREATOR
+  else if (Object.keys(userRoles[roomCode]).length === 0) {
+    role = "creator";
+  }
+  // ✅ DEFAULT
+  else {
+    role = "viewer";
+  }
 
-    const user = {
-      uid,
-      socketId: socket.id,
-      name,
-      role,
-    };
+  // 🔥 SAVE ROLE PERMANENTLY
+  userRoles[roomCode][uid] = role;
 
-    roomUsers[roomCode].push(user);
+  const user = {
+    uid,
+    socketId: socket.id,
+    name,
+    role,
+  };
 
-    socket.emit("load-board", roomBoards[roomCode]);
+  roomUsers[roomCode].push(user);
 
-    io.to(roomCode).emit("participants", roomUsers[roomCode]);
-  });
+  socket.emit("load-board", roomBoards[roomCode]);
+
+  io.to(roomCode).emit("participants", roomUsers[roomCode]);
+});
 
   // ✅ ROLE CHANGE (ONLY CREATOR)
   socket.on("change-role", ({ roomCode, userId, role }) => {
-    const users = roomUsers[roomCode];
-    if (!users) return;
+  const users = roomUsers[roomCode];
+  if (!users) return;
 
-    const requester = users.find(
-      (u) => u.socketId === socket.id
-    );
+  const user = users.find((u) => u.uid === userId);
+  if (user) user.role = role;
 
-    if (!requester || requester.role !== "creator") return;
+  // ✅ ALSO SAVE IN ROLE STORE
+  if (!userRoles[roomCode]) userRoles[roomCode] = {};
+  userRoles[roomCode][userId] = role;
 
-    const user = users.find((u) => u.uid === userId);
-
-    if (user && user.uid !== roomCreators[roomCode]) {
-      user.role = role;
-    }
-
-    io.to(roomCode).emit("participants", users);
-  });
+  io.to(roomCode).emit("participants", users);
+});
 
   // ✅ DRAW EVENTS
   socket.on("start-draw", (data) => {
