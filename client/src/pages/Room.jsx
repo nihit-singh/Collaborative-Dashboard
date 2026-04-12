@@ -6,20 +6,21 @@ import { io } from "socket.io-client";
 
 const socket = io("http://localhost:5000");
 
-// ✅ STABLE UID (NO DUPLICATES EVER)
+// ✅ STABLE UID
 const getUID = () => {
   let uid = localStorage.getItem("uid");
   if (!uid) {
-    uid = Math.random().toString(36).substring(2, 9);
+    uid = crypto.randomUUID();
     localStorage.setItem("uid", uid);
   }
   return uid;
 };
 
-const uid = getUID();
-
-
 function Room() {
+  if (!localStorage.getItem("username")) {
+    window.location.href = "/";
+  }
+
   const { roomCode } = useParams();
   const canvasRef = useRef(null);
 
@@ -34,23 +35,29 @@ function Room() {
 
   const uid = getUID();
 
-  const user = JSON.parse(
-    atob(localStorage.getItem("token").split(".")[1])
-  );
+  const user = {
+    uid,
+    name: localStorage.getItem("username"),
+  };
 
   // ✅ JOIN ROOM
   useEffect(() => {
-  socket.emit("join-room", {
-    roomCode,
-    name: user.name,
-    uid, // ✅ VERY IMPORTANT
-  });
-}, [roomCode]);
+    socket.emit("join-room", {
+      roomCode,
+      name: user.name,
+      uid: user.uid,
+    });
+  }, [roomCode]);
 
   // ✅ SOCKET EVENTS
   useEffect(() => {
     const ctx = canvasRef.current.getContext("2d");
     ctx.lineCap = "round";
+
+    socket.on("name-taken", () => {
+      alert("Username already taken!");
+      window.location.href = "/dashboard";
+    });
 
     socket.on("start-draw", ({ x, y, color, size, tool }) => {
       ctx.beginPath();
@@ -105,15 +112,20 @@ function Room() {
       });
     });
 
-    // ✅ PARTICIPANTS + ROLE
-    
-
     // ✅ CURSOR RECEIVE
     socket.on("cursor-move", ({ id, x, y, name }) => {
       setCursors((prev) => ({
         ...prev,
         [id]: { x, y, name },
       }));
+    });
+
+    socket.on("cursor-remove", (id) => {
+      setCursors((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
     });
 
     socket.on("user-left", (id) => {
@@ -124,57 +136,53 @@ function Room() {
       });
     });
 
+    socket.on("participants", (users) => {
+      setParticipants(users);
+
+      const me = users.find((u) => u.uid === uid);
+      if (me) setMyRole(me.role);
+    });
+
     return () => socket.off();
   }, []);
 
-  // ✅ FIXED CANVAS COORDS
+  // ✅ CANVAS COORDS (ACCURATE)
   const getCoords = (e) => {
-  const rect = canvasRef.current.getBoundingClientRect();
+    const rect = canvasRef.current.getBoundingClientRect();
 
-  const scaleX = canvasRef.current.width / rect.width;
-  const scaleY = canvasRef.current.height / rect.height;
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
 
-  return {
-    x: (e.clientX - rect.left) * scaleX,
-    y: (e.clientY - rect.top) * scaleY,
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
   };
-};
 
-  // ✅ CURSOR SEND
+  // ✅ CURSOR SEND (SCREEN COORDS)
   const handleCursor = (e) => {
-  const rect = canvasRef.current.getBoundingClientRect();
+    const rect = canvasRef.current.getBoundingClientRect();
 
-const x =
-  (e.clientX - rect.left) *
-  (canvasRef.current.width / rect.width);
+    const inside =
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom;
 
-const y =
-  (e.clientY - rect.top) *
-  (canvasRef.current.height / rect.height);
+    if (!inside) {
+      socket.emit("cursor-leave", { roomCode });
+      return;
+    }
 
-//   console.log(rect.width, canvasRef.current.width);
-  const inside =
-    x >= rect.left &&
-    x <= rect.right &&
-    y >= rect.top &&
-    y <= rect.bottom;
+    socket.emit("cursor-move", {
+      roomCode,
+      x: e.clientX,
+      y: e.clientY,
+      name: user.name,
+    });
+  };
 
-  if (!inside) {
-    // ❌ OUTSIDE → REMOVE CURSOR
-    socket.emit("cursor-leave", { roomCode });
-    return;
-  }
-
-  // ✅ INSIDE → SEND POSITION
-  socket.emit("cursor-move", {
-    roomCode,
-    x,
-    y,
-    name: user.name,
-  });
-};
-
-  // ✅ START DRAW
+  // ✅ DRAWING
   const startDrawing = (e) => {
     if (myRole === "viewer") return;
 
@@ -198,7 +206,6 @@ const y =
     });
   };
 
-  // ✅ DRAW
   const draw = (e) => {
     if (!drawing || myRole === "viewer") return;
 
@@ -243,25 +250,6 @@ const y =
     });
   };
 
-  socket.on("cursor-remove", (id) => {
-  setCursors((prev) => {
-    const copy = { ...prev };
-    delete copy[id];
-    return copy;
-  });
-});
-useEffect(() => {
-  socket.on("participants", (users) => {
-    setParticipants(users);
-
-    // ✅ SET MY ROLE AFTER REFRESH
-    const me = users.find((u) => u.uid === uid);
-    if (me) setMyRole(me.role);
-  });
-
-  return () => socket.off("participants");
-}, []);
-
   return (
     <div style={{ display: "flex", height: "100vh", background: "#1e1e1e" }}>
       
@@ -270,7 +258,7 @@ useEffect(() => {
         <h3>Participants</h3>
 
         {participants.map((p) => (
-          <div key={p.uid} style={{ marginBottom: "6px" }}>
+          <div key={p.uid}>
             {p.name} {p.uid === uid && "(You)"} ({p.role})
 
             {myRole === "creator" && p.uid !== uid && (
@@ -284,36 +272,30 @@ useEffect(() => {
       </div>
 
       {/* RIGHT SIDE */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
-        
-        {/* TOP BAR */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          background: "#2c2c2c",
-          padding: "8px",
-          color: "#fff"
-        }}>
-          <div>Room: {roomCode}</div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
-          <button
-            onClick={() => {
-              try {
-                navigator.clipboard.writeText(roomCode);
-                alert("Copied!");
-              } catch {
-                const t = document.createElement("textarea");
-                t.value = roomCode;
-                document.body.appendChild(t);
-                t.select();
-                document.execCommand("copy");
-                document.body.removeChild(t);
-                alert("Copied!");
-              }
-            }}
-          >
-            📋 Copy
-          </button>
+        {/* TOP BAR */}
+        <div style={{ display: "flex", justifyContent: "space-between", background: "#2c2c2c", padding: "8px", color: "#fff" }}>
+          <div>Room: {roomCode}
+            <span style={{ marginLeft: "10px" }}>
+            <button onClick={() => {
+              navigator.clipboard.writeText(roomCode);
+              alert("Copied!");
+            }}>
+              📋 Copy
+            </button>
+            </span>
+          </div>
+            
+          <div>
+
+            <button onClick={() => {
+              localStorage.clear();
+              window.location.href = "/";
+            }} style={{ background: "#ff4d4d", color: "#ffffff", border: "none", padding: "5px 10px", borderRadius: "4px" }}>
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* TOOLBAR */}
@@ -329,23 +311,34 @@ useEffect(() => {
 
         {/* CURSORS */}
         {Object.entries(cursors).map(([id, c]) => (
-          <div
-            key={id}
-            style={{
-              position: "fixed",
-              left: c.x,
-              top: c.y,
-              transform: "translate(-50%, -50%)",
+          <div key={id} style={{
+            position: "fixed",
+            left: c.x,
+            top: c.y,
+            transform: "translate(-50%, -50%)",
+            pointerEvents: "none",
+            zIndex: 9999
+          }}>
+            <div style={{
+              width: "8px",
+              height: "8px",
+              background: "rgba(0,0,0,0.6)",
+              borderRadius: "50%"
+            }} />
+
+            <div style={{
+              position: "absolute",
+              top: "-18px",
+              left: "50%",
+              transform: "translateX(-50%)",
               background: "#000",
               color: "#fff",
+              fontSize: "11px",
               padding: "2px 6px",
-              borderRadius: "6px",
-              fontSize: "12px",
-              pointerEvents: "none",
-              zIndex: 9999,
-            }}
-          >
-            {c.name}
+              borderRadius: "6px"
+            }}>
+              {c.name}
+            </div>
           </div>
         ))}
 
@@ -369,9 +362,9 @@ useEffect(() => {
             }}
             onMouseUp={stopDrawing}
             onMouseLeave={() => {
-                stopDrawing();
-    socket.emit("cursor-leave", { roomCode }); 
-  }}
+              stopDrawing();
+              socket.emit("cursor-leave", { roomCode });
+            }}
           />
         </div>
       </div>

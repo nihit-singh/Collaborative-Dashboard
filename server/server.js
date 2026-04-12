@@ -4,14 +4,10 @@ import dotenv from "dotenv";
 import http from "http";
 import { Server } from "socket.io";
 
-import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import boardRoutes from "./routes/boardRoutes.js";
 
 dotenv.config();
-
-const userRoles = {}; 
-// structure: { roomCode: { uid: role } }
 
 const app = express();
 
@@ -24,7 +20,6 @@ app.use(
 
 app.use(express.json());
 
-app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/board", boardRoutes);
 
@@ -38,81 +33,95 @@ const io = new Server(server, {
 
 const roomUsers = {};
 const roomBoards = {};
-const roomCreators = {}; // 🔥 IMPORTANT
+const userRoles = {}; // ✅ role persistence
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   // ✅ JOIN ROOM
   socket.on("join-room", ({ roomCode, name, uid }) => {
-  socket.join(roomCode);
+    socket.join(roomCode);
 
-  if (!roomUsers[roomCode]) roomUsers[roomCode] = [];
-  if (!roomBoards[roomCode]) roomBoards[roomCode] = [];
-  if (!userRoles[roomCode]) userRoles[roomCode] = {};
+    if (!roomUsers[roomCode]) roomUsers[roomCode] = [];
+    if (!roomBoards[roomCode]) roomBoards[roomCode] = [];
+    if (!userRoles[roomCode]) userRoles[roomCode] = {};
 
-  // 🔥 REMOVE OLD SOCKET INSTANCE (same uid)
-  roomUsers[roomCode] = roomUsers[roomCode].filter(
-    (u) => u.uid !== uid
-  );
+    // 🔥 DUPLICATE NAME CHECK
+    const duplicate = roomUsers[roomCode].find(
+      (u) => u.name === name && u.uid !== uid
+    );
 
-  let role;
+    if (duplicate) {
+      socket.emit("name-taken");
+      return;
+    }
 
-  // ✅ IF ROLE ALREADY EXISTS → USE IT
-  if (userRoles[roomCode][uid]) {
-    role = userRoles[roomCode][uid];
-  }
-  // ✅ FIRST USER → CREATOR
-  else if (Object.keys(userRoles[roomCode]).length === 0) {
-    role = "creator";
-  }
-  // ✅ DEFAULT
-  else {
-    role = "viewer";
-  }
+    // 🔥 REMOVE OLD INSTANCE (refresh)
+    roomUsers[roomCode] = roomUsers[roomCode].filter(
+      (u) => u.uid !== uid
+    );
 
-  // 🔥 SAVE ROLE PERMANENTLY
-  userRoles[roomCode][uid] = role;
+    // 🔥 ROLE FIX (IMPORTANT)
+    let role;
 
-  const user = {
-    uid,
-    socketId: socket.id,
-    name,
-    role,
-  };
+    if (userRoles[roomCode][uid]) {
+      role = userRoles[roomCode][uid]; // ✅ restore role
+    } else if (roomUsers[roomCode].length === 0) {
+      role = "creator";
+    } else {
+      role = "viewer";
+    }
 
-  roomUsers[roomCode].push(user);
+    userRoles[roomCode][uid] = role; // ✅ save role
 
-  socket.emit("load-board", roomBoards[roomCode]);
+    const user = {
+      uid,
+      socketId: socket.id,
+      name,
+      role,
+    };
 
-  io.to(roomCode).emit("participants", roomUsers[roomCode]);
-});
+    roomUsers[roomCode].push(user);
 
-  // ✅ ROLE CHANGE (ONLY CREATOR)
+    socket.emit("load-board", roomBoards[roomCode]);
+    io.to(roomCode).emit("participants", roomUsers[roomCode]);
+  });
+
+  // ✅ ROLE CHANGE
   socket.on("change-role", ({ roomCode, userId, role }) => {
-  const users = roomUsers[roomCode];
-  if (!users) return;
+    const users = roomUsers[roomCode];
+    if (!users) return;
 
-  const user = users.find((u) => u.uid === userId);
-  if (user) user.role = role;
+    const user = users.find((u) => u.uid === userId);
+    if (user) user.role = role;
 
-  // ✅ ALSO SAVE IN ROLE STORE
-  if (!userRoles[roomCode]) userRoles[roomCode] = {};
-  userRoles[roomCode][userId] = role;
+    // ✅ SAVE ROLE
+    if (!userRoles[roomCode]) userRoles[roomCode] = {};
+    userRoles[roomCode][userId] = role;
 
-  io.to(roomCode).emit("participants", users);
-});
+    io.to(roomCode).emit("participants", users);
+  });
 
   // ✅ DRAW EVENTS
   socket.on("start-draw", (data) => {
-    roomBoards[data.roomCode].push({ ...data, type: "start" });
-    socket.to(data.roomCode).emit("start-draw", data);
-  });
+  if (!roomBoards[data.roomCode]) {
+    roomBoards[data.roomCode] = []; // ✅ FIX
+  }
 
-  socket.on("draw", (data) => {
-    roomBoards[data.roomCode].push({ ...data, type: "draw" });
-    socket.to(data.roomCode).emit("draw", data);
-  });
+  roomBoards[data.roomCode].push({ ...data, type: "start" });
+
+  socket.to(data.roomCode).emit("start-draw", data);
+});
+
+socket.on("draw", (data) => {
+  if (!roomBoards[data.roomCode]) {
+    roomBoards[data.roomCode] = []; // ✅ FIX
+  }
+
+  roomBoards[data.roomCode].push({ ...data, type: "draw" });
+
+  socket.to(data.roomCode).emit("draw", data);
+});
 
   socket.on("stop-draw", (data) => {
     socket.to(data.roomCode).emit("stop-draw");
@@ -120,11 +129,11 @@ io.on("connection", (socket) => {
 
   // ✅ CLEAR
   socket.on("clear-board", ({ roomCode }) => {
-    roomBoards[roomCode] = [];
-    io.to(roomCode).emit("clear-board");
-  });
+  roomBoards[roomCode] = []; // already safe
+  io.to(roomCode).emit("clear-board");
+});
 
-  // ✅ CURSOR
+  // ✅ CURSOR MOVE
   socket.on("cursor-move", ({ roomCode, x, y, name }) => {
     socket.to(roomCode).emit("cursor-move", {
       id: socket.id,
@@ -134,17 +143,10 @@ io.on("connection", (socket) => {
     });
   });
 
+  // ✅ CURSOR LEAVE
   socket.on("cursor-leave", ({ roomCode }) => {
-  socket.to(roomCode).emit("cursor-remove", socket.id);
-});
-
-socket.on("cursor-remove", (id) => {
-  setCursors((prev) => {
-    const copy = { ...prev };
-    delete copy[id];
-    return copy;
+    socket.to(roomCode).emit("cursor-remove", socket.id);
   });
-});
 
   // ✅ DISCONNECT
   socket.on("disconnect", () => {

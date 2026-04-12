@@ -1,37 +1,71 @@
-import { GoogleLogin } from "@react-oauth/google";
-import axios from "axios";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Login() {
+  const [name, setName] = useState("");
   const navigate = useNavigate();
 
-  const handleSuccess = async (credentialResponse) => {
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/google",
-        {
-          token: credentialResponse.credential,
-        }
-      );
+  const handleLogin = () => {
+    if (!name.trim()) return alert("Enter username");
 
-      localStorage.setItem("token", res.data.token);
-
-      navigate("/dashboard"); // ✅ redirect
-    } catch (err) {
-      console.error(err);
-    }
+    localStorage.setItem("username", name);
+    navigate("/dashboard");
   };
 
   return (
-    <div style={{ padding: "50px" }}>
-      <h2>Login</h2>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h2 style={{ marginBottom: "20px" }}>CollabBoard</h2>
 
-      <GoogleLogin
-        onSuccess={handleSuccess}
-        onError={() => console.log("Login Failed")}
-      />
+        <input
+          type="text"
+          placeholder="Enter username"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          style={styles.input}
+        />
+
+        <button onClick={handleLogin} style={styles.button}>
+          Enter
+        </button>
+      </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    height: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "#1e1e1e",
+  },
+  card: {
+    background: "#2c2c2c",
+    padding: "10px 30px 30px 30px",
+    borderRadius: "10px",
+    textAlign: "center",
+    color: "white",
+    width: "300px",
+  },
+  input: {
+    width: "93%",
+    padding: "10px",
+    marginBottom: "15px",
+    borderRadius: "6px",
+    border: "none",
+    outline: "none",
+  },
+  button: {
+    width: "100%",
+    padding: "10px",
+    background: "#4CAF50",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+};
 
 export default Login;

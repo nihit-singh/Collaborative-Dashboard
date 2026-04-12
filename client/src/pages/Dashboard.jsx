@@ -1,66 +1,121 @@
-import { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 function Dashboard() {
-  const [roomCode, setRoomCode] = useState("");
   const navigate = useNavigate();
+  const [roomCode, setRoomCode] = useState("");
 
-  const token = localStorage.getItem("token");
-  const user = JSON.parse(atob(token.split(".")[1]));
+  const username = localStorage.getItem("username");
 
-  const createRoom = async () => {
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/api/rooms/create",
-        {
-          userId: user.id,
-        }
-      );
+  if (!username) {
+    window.location.href = "/";
+  }
 
-      const code = res.data.roomCode;
-
-      alert("Room Created: " + code);
-
-      navigate(`/room/${code}`);
-    } catch (err) {
-      console.error(err);
-    }
+  const createRoom = () => {
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    navigate(`/room/${code}`);
   };
 
-  const joinRoom = async () => {
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/api/rooms/join",
-        {
-          roomCode,
-        }
-      );
+  const joinRoom = () => {
+    if (!roomCode.trim()) return alert("Enter room code");
+    navigate(`/room/${roomCode}`);
+  };
 
-      navigate(`/room/${res.data.room.room_code}`);
-    } catch (err) {
-      alert("Room not found ❌");
-    }
+  const logout = () => {
+    localStorage.clear();
+    window.location.href = "/";
   };
 
   return (
-    <div style={{ padding: "50px" }}>
-      <h2>Dashboard</h2>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        {/* HEADER */}
+        <div style={styles.header}>
+          <h3>Welcome, {username}</h3>
+          <button onClick={logout} style={styles.logout}>
+            Logout
+          </button>
+        </div>
 
-      <p>Welcome, {user.name}</p>
+        {/* CREATE */}
+        <button onClick={createRoom} style={styles.create}>
+          ➕ Create Room
+        </button>
 
-      <button onClick={createRoom}>Create Room</button>
+        {/* JOIN */}
+        <div style={{ marginTop: "20px" }}>
+          <input
+            type="text"
+            placeholder="Enter Room Code"
+            value={roomCode}
+            onChange={(e) => setRoomCode(e.target.value)}
+            style={styles.input}
+          />
 
-      <div style={{ marginTop: "20px" }}>
-        <input
-          placeholder="Enter Room Code"
-          value={roomCode}
-          onChange={(e) => setRoomCode(e.target.value)}
-        />
-        <button onClick={joinRoom}>Join Room</button>
+          <button onClick={joinRoom} style={styles.join}>
+            Join Room
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    height: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "#1e1e1e",
+  },
+  card: {
+    background: "#2c2c2c",
+    padding: "30px",
+    borderRadius: "10px",
+    width: "350px",
+    color: "white",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px",
+  },
+  logout: {
+    background: "#ff4d4d",
+    border: "none",
+    padding: "6px 10px",
+    borderRadius: "6px",
+    color: "white",
+    cursor: "pointer",
+  },
+  create: {
+    width: "100%",
+    padding: "12px",
+    background: "#4CAF50",
+    border: "none",
+    borderRadius: "6px",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "16px",
+  },
+  input: {
+    width: "95%",
+    padding: "10px",
+    marginBottom: "10px",
+    borderRadius: "6px",
+    border: "none",
+  },
+  join: {
+    width: "100%",
+    padding: "10px",
+    background: "#2196F3",
+    border: "none",
+    borderRadius: "6px",
+    color: "white",
+    cursor: "pointer",
+  },
+};
 
 export default Dashboard;
