@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useRef, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -6,7 +5,7 @@ import { io } from "socket.io-client";
 
 const socket = io("http://localhost:5000");
 
-// ✅ STABLE UID
+// generate unique id
 const getUID = () => {
   let uid = localStorage.getItem("uid");
   if (!uid) {
@@ -15,6 +14,7 @@ const getUID = () => {
   }
   return uid;
 };
+
 
 function Room() {
   if (!localStorage.getItem("username")) {
@@ -40,7 +40,8 @@ function Room() {
     name: localStorage.getItem("username"),
   };
 
-  // ✅ JOIN ROOM
+  
+  
   useEffect(() => {
     socket.emit("join-room", {
       roomCode,
@@ -49,7 +50,8 @@ function Room() {
     });
   }, [roomCode]);
 
-  // ✅ SOCKET EVENTS
+
+
   useEffect(() => {
     const ctx = canvasRef.current.getContext("2d");
     ctx.lineCap = "round";
@@ -112,7 +114,7 @@ function Room() {
       });
     });
 
-    // ✅ CURSOR RECEIVE
+    //pointer tracking
     socket.on("cursor-move", ({ id, x, y, name }) => {
       setCursors((prev) => ({
         ...prev,
@@ -146,7 +148,7 @@ function Room() {
     return () => socket.off();
   }, []);
 
-  // ✅ CANVAS COORDS (ACCURATE)
+  //canvas cordinates
   const getCoords = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
 
@@ -159,7 +161,7 @@ function Room() {
     };
   };
 
-  // ✅ CURSOR SEND (SCREEN COORDS)
+  //cursor cordinates
   const handleCursor = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
 
@@ -182,7 +184,7 @@ function Room() {
     });
   };
 
-  // ✅ DRAWING
+
   const startDrawing = (e) => {
     if (myRole === "viewer") return;
 
@@ -251,8 +253,8 @@ function Room() {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#1e1e1e" }}>
-      
+    <div style={{ display: "flex", height: "97.8vh", background: "#1e1e1e" }}>
+
       {/* LEFT PANEL */}
       <div style={{ width: "240px", background: "#2c2c2c", color: "#fff", padding: "10px" }}>
         <h3>Participants</h3>
@@ -278,15 +280,15 @@ function Room() {
         <div style={{ display: "flex", justifyContent: "space-between", background: "#2c2c2c", padding: "8px", color: "#fff" }}>
           <div>Room: {roomCode}
             <span style={{ marginLeft: "10px" }}>
-            <button onClick={() => {
-              navigator.clipboard.writeText(roomCode);
-              alert("Copied!");
-            }}>
-              📋 Copy
-            </button>
+              <button onClick={() => {
+                navigator.clipboard.writeText(roomCode);
+                alert("Copied!");
+              }}>
+                📋 Copy
+              </button>
             </span>
           </div>
-            
+
           <div>
 
             <button onClick={() => {

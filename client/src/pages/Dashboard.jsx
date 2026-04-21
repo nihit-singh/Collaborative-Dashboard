@@ -8,6 +8,7 @@ function Dashboard() {
   const username = localStorage.getItem("username");
 
   if (!username) {
+    // eslint-disable-next-line react-hooks/immutability
     window.location.href = "/";
   }
 
@@ -29,7 +30,7 @@ function Dashboard() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        {/* HEADER */}
+        
         <div style={styles.header}>
           <h3>Welcome, {username}</h3>
           <button onClick={logout} style={styles.logout}>
@@ -37,12 +38,11 @@ function Dashboard() {
           </button>
         </div>
 
-        {/* CREATE */}
+        
         <button onClick={createRoom} style={styles.create}>
           ➕ Create Room
         </button>
 
-        {/* JOIN */}
         <div style={{ marginTop: "20px" }}>
           <input
             type="text"
@@ -63,7 +63,7 @@ function Dashboard() {
 
 const styles = {
   container: {
-    height: "100vh",
+    height: "97.8vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",

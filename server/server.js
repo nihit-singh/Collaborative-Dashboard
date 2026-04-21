@@ -33,12 +33,11 @@ const io = new Server(server, {
 
 const roomUsers = {};
 const roomBoards = {};
-const userRoles = {}; // ✅ role persistence
+const userRoles = {};
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // ✅ JOIN ROOM
   socket.on("join-room", ({ roomCode, name, uid }) => {
     socket.join(roomCode);
 
@@ -46,7 +45,7 @@ io.on("connection", (socket) => {
     if (!roomBoards[roomCode]) roomBoards[roomCode] = [];
     if (!userRoles[roomCode]) userRoles[roomCode] = {};
 
-    // 🔥 DUPLICATE NAME CHECK
+    //unique username check
     const duplicate = roomUsers[roomCode].find(
       (u) => u.name === name && u.uid !== uid
     );
@@ -56,23 +55,22 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // 🔥 REMOVE OLD INSTANCE (refresh)
+    //refresh 
     roomUsers[roomCode] = roomUsers[roomCode].filter(
       (u) => u.uid !== uid
     );
 
-    // 🔥 ROLE FIX (IMPORTANT)
     let role;
 
     if (userRoles[roomCode][uid]) {
-      role = userRoles[roomCode][uid]; // ✅ restore role
+      role = userRoles[roomCode][uid];
     } else if (roomUsers[roomCode].length === 0) {
       role = "creator";
     } else {
       role = "viewer";
     }
 
-    userRoles[roomCode][uid] = role; // ✅ save role
+    userRoles[roomCode][uid] = role;
 
     const user = {
       uid,
@@ -87,7 +85,7 @@ io.on("connection", (socket) => {
     io.to(roomCode).emit("participants", roomUsers[roomCode]);
   });
 
-  // ✅ ROLE CHANGE
+  //role permissions
   socket.on("change-role", ({ roomCode, userId, role }) => {
     const users = roomUsers[roomCode];
     if (!users) return;
@@ -95,17 +93,17 @@ io.on("connection", (socket) => {
     const user = users.find((u) => u.uid === userId);
     if (user) user.role = role;
 
-    // ✅ SAVE ROLE
+
     if (!userRoles[roomCode]) userRoles[roomCode] = {};
     userRoles[roomCode][userId] = role;
 
     io.to(roomCode).emit("participants", users);
   });
 
-  // ✅ DRAW EVENTS
+  //whiteboard actions
   socket.on("start-draw", (data) => {
   if (!roomBoards[data.roomCode]) {
-    roomBoards[data.roomCode] = []; // ✅ FIX
+    roomBoards[data.roomCode] = [];
   }
 
   roomBoards[data.roomCode].push({ ...data, type: "start" });
@@ -115,7 +113,7 @@ io.on("connection", (socket) => {
 
 socket.on("draw", (data) => {
   if (!roomBoards[data.roomCode]) {
-    roomBoards[data.roomCode] = []; // ✅ FIX
+    roomBoards[data.roomCode] = [];
   }
 
   roomBoards[data.roomCode].push({ ...data, type: "draw" });
@@ -127,13 +125,13 @@ socket.on("draw", (data) => {
     socket.to(data.roomCode).emit("stop-draw");
   });
 
-  // ✅ CLEAR
+  
   socket.on("clear-board", ({ roomCode }) => {
-  roomBoards[roomCode] = []; // already safe
+  roomBoards[roomCode] = [];
   io.to(roomCode).emit("clear-board");
 });
 
-  // ✅ CURSOR MOVE
+  // cursor tracking
   socket.on("cursor-move", ({ roomCode, x, y, name }) => {
     socket.to(roomCode).emit("cursor-move", {
       id: socket.id,
@@ -143,12 +141,11 @@ socket.on("draw", (data) => {
     });
   });
 
-  // ✅ CURSOR LEAVE
+
   socket.on("cursor-leave", ({ roomCode }) => {
     socket.to(roomCode).emit("cursor-remove", socket.id);
   });
 
-  // ✅ DISCONNECT
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
 

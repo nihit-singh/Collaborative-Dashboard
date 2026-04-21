@@ -35,7 +35,7 @@ function Login() {
 
 const styles = {
   container: {
-    height: "100vh",
+    height: "97.8vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -69,3 +69,6 @@ const styles = {
 };
 
 export default Login;
+
+
+
