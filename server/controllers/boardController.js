@@ -1,10 +1,10 @@
 import { db } from "../config/db.js";
 
-// SAVE BOARD
+
 export const saveBoard = (req, res) => {
   const { roomCode, boardData } = req.body;
 
-  const safeData = JSON.stringify(boardData); // ✅ ALWAYS stringify
+  const safeData = JSON.stringify(boardData);
 
   db.query(
     "SELECT id FROM rooms WHERE room_code = ?",
@@ -49,7 +49,7 @@ export const saveBoard = (req, res) => {
   );
 };
 
-// LOAD BOARD
+
 export const loadBoard = (req, res) => {
   const { roomCode } = req.params;
 

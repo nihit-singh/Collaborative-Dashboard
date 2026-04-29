@@ -1,27 +1,23 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Room from "./pages/Room";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import PrivateRoute from "./components/auth/PrivateRoute";
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
+import RoomPage from "./pages/RoomPage";
 
-// ✅ Check login
-const PrivateRoute = ({ children }) => {
-  const username = localStorage.getItem("username");
-  return username ? children : <Navigate to="/" />;
-};
-
+/**
+ * App — root component with routing configuration.
+ */
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* PUBLIC */}
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<LoginPage />} />
 
-        {/* PROTECTED */}
         <Route
           path="/dashboard"
           element={
             <PrivateRoute>
-              <Dashboard />
+              <DashboardPage />
             </PrivateRoute>
           }
         />
@@ -30,7 +26,7 @@ function App() {
           path="/room/:roomCode"
           element={
             <PrivateRoute>
-              <Room />
+              <RoomPage />
             </PrivateRoute>
           }
         />
