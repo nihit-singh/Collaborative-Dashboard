@@ -54,7 +54,7 @@ const clientPath = path.join(__dirname, "../client/dist");
 app.use(express.static(clientPath));
 
 // Fallback route for React
-app.get("*", (req, res) => {
+app.get("/*", (req, res) => {
   res.sendFile(path.join(clientPath, "index.html"));
 });
 
