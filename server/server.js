@@ -13,20 +13,24 @@ import { registerSocketHandlers } from "./socket/index.js";
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
-const CLIENT_ORIGIN =
-  process.env.CLIENT_ORIGIN || "http://localhost:5173";
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 
+// --- __dirname fix for ES modules ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// --- Express setup ---
 const app = express();
 
 app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 app.use(express.json());
 
-// ✅ Health check (optional)
+// --- Health check ---
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "API running ✅" });
 });
 
-// ✅ REST routes
+// --- REST routes ---
 app.use("/api/rooms", roomRoutes);
 app.use("/api/board", boardRoutes);
 
@@ -39,28 +43,16 @@ const io = new Server(server, {
 
 registerSocketHandlers(io);
 
-// ===============================
-// 🔥 SERVE FRONTEND (FIXED PART)
-// ===============================
-
-// Fix __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Correct path to React build
+// --- Serve React frontend ---
 const clientPath = path.join(__dirname, "../client/dist");
-
-// Serve static files
 app.use(express.static(clientPath));
 
-// Fallback route for React
-app.get("/*", (req, res) => {
+// Fallback for React Router (Express 5 compatible ✅)
+app.use((req, res) => {
   res.sendFile(path.join(clientPath, "index.html"));
 });
 
-// ===============================
-// 🚀 START SERVER
-// ===============================
+// --- Start ---
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
