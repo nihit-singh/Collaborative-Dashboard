@@ -23,7 +23,12 @@ export default function drawingHandler(io, socket) {
   });
 
   socket.on("stop-draw", (data) => {
-    socket.to(data.roomCode).emit("stop-draw", { socketId: socket.id });
+    if (!roomBoards[data.roomCode]) {
+      roomBoards[data.roomCode] = [];
+    }
+    const payload = { ...data, socketId: socket.id };
+    roomBoards[data.roomCode].push({ ...payload, type: "stop" });
+    socket.to(data.roomCode).emit("stop-draw", payload);
   });
 
   socket.on("clear-board", ({ roomCode }) => {

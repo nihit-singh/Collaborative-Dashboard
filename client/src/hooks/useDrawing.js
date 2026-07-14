@@ -46,8 +46,9 @@ export function useDrawing(canvasRef, roomCode, myRole, uid) {
       remoteLastPointsRef.current[fromUid] = { x, y };
     };
 
-    const onStopDraw = ({ uid: fromUid }) => {
-      if (fromUid) delete remoteLastPointsRef.current[fromUid];
+    const onStopDraw = ({ uid: fromUid, socketId }) => {
+      const key = fromUid || socketId;
+      if (key) delete remoteLastPointsRef.current[key];
     };
 
     const onClearBoard = () => {
@@ -66,7 +67,9 @@ export function useDrawing(canvasRef, roomCode, myRole, uid) {
         ctx.strokeStyle = a.color;
         ctx.lineWidth = a.size;
 
-        if (a.type === "start") {
+        if (a.type === "stop") {
+          delete lastPoints[key];
+        } else if (a.type === "start") {
           lastPoints[key] = { x: a.x, y: a.y };
         } else {
           const last = lastPoints[key] || { x: a.x, y: a.y };
