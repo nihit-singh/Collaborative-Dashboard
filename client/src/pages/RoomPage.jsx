@@ -49,13 +49,14 @@ function RoomPage() {
     color, size, tool,
     setColor, setSize, setTool,
     startDrawing, draw, stopDrawing, clearBoard,
-  } = useDrawing(canvasRef, roomCode, myRole);
+  } = useDrawing(canvasRef, roomCode, myRole, uid);
 
   // Cursor tracking
   const { cursors, localCursor, handleCursorMove, handleCursorLeave } = useCursors(
     canvasRef,
     roomCode,
-    username
+    username,
+    uid
   );
 
   // Listen for participant updates

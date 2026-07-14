@@ -9,7 +9,7 @@ import socket from "../services/socket";
  * 2. Cursors show only when the remote user is drawing.
  * 3. After drawing stops, the cursor stays visible for 2 seconds before disappearing.
  */
-export function useCursors(canvasRef, roomCode, userName) {
+export function useCursors(canvasRef, roomCode, userName, uid) {
   const [cursors, setCursors] = useState({});
   const timeouts = useRef({});
 
@@ -52,15 +52,15 @@ export function useCursors(canvasRef, roomCode, userName) {
     };
 
     const onStartDraw = (data) => {
-      if (data.socketId) setVisibility(data.socketId, true);
+      if (data.uid) setVisibility(data.uid, true);
     };
 
     const onDraw = (data) => {
-      if (data.socketId) setVisibility(data.socketId, true);
+      if (data.uid) setVisibility(data.uid, true);
     };
 
     const onStopDraw = (data) => {
-      const id = data.socketId;
+      const id = data.uid;
       if (!id) return;
 
       // Clear previous timeout if exists
@@ -131,24 +131,25 @@ export function useCursors(canvasRef, roomCode, userName) {
       setLocalCursor({ x, y, isInside: inside });
 
       if (!inside) {
-        socket.emit("cursor-leave", { roomCode });
+        socket.emit("cursor-leave", { roomCode, uid });
         return;
       }
 
       socket.emit("cursor-move", {
         roomCode,
+        uid,
         x,
         y,
         name: userName,
       });
     },
-    [canvasRef, roomCode, userName]
+    [canvasRef, roomCode, userName, uid]
   );
 
   const handleCursorLeave = useCallback(() => {
     setLocalCursor((prev) => ({ ...prev, isInside: false }));
-    socket.emit("cursor-leave", { roomCode });
-  }, [roomCode]);
+    socket.emit("cursor-leave", { roomCode, uid });
+  }, [roomCode, uid]);
 
   return { cursors, localCursor, handleCursorMove, handleCursorLeave };
 }

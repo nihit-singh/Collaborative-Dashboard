@@ -47,12 +47,15 @@ export default function roomHandler(io, socket) {
     console.log("User disconnected:", socket.id);
 
     for (const room in roomUsers) {
+      const leavingUser = roomUsers[room].find((u) => u.socketId === socket.id);
+      if (!leavingUser) continue;
+
       roomUsers[room] = roomUsers[room].filter(
         (u) => u.socketId !== socket.id
       );
 
       io.to(room).emit("participants", roomUsers[room]);
-      io.to(room).emit("user-left", socket.id);
+      io.to(room).emit("user-left", leavingUser.uid);
     }
   });
 }
