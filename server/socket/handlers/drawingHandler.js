@@ -1,4 +1,4 @@
-import { roomBoards } from "../state/roomState.js";
+import { roomBoards, roomUsers } from "../state/roomState.js";
 
 /**
  * Drawing handler — start-draw, draw, stop-draw, clear-board events.
@@ -32,6 +32,11 @@ export default function drawingHandler(io, socket) {
   });
 
   socket.on("clear-board", ({ roomCode }) => {
+    // Block viewers from clearing the board
+    const users = roomUsers[roomCode] || [];
+    const user = users.find((u) => u.socketId === socket.id);
+    if (user && user.role === "viewer") return;
+
     roomBoards[roomCode] = [];
     io.to(roomCode).emit("clear-board");
   });

@@ -3,7 +3,7 @@ import Button from "../common/Button";
 /**
  * Toolbar — drawing tool selection, color picker, size slider, clear button.
  */
-function Toolbar({ tool, color, size, onToolChange, onColorChange, onSizeChange, onClear }) {
+function Toolbar({ tool, color, size, myRole, onToolChange, onColorChange, onSizeChange, onClear }) {
   return (
     <div style={styles.container}>
       <div style={styles.toolGroup}>
@@ -52,9 +52,11 @@ function Toolbar({ tool, color, size, onToolChange, onColorChange, onSizeChange,
         <span style={styles.sizeValue}>{size}</span>
       </div>
 
-      <Button variant="danger" onClick={onClear} style={{ padding: "6px 14px", fontSize: "13px" }}>
-        🗑️ Clear
-      </Button>
+      {myRole !== "viewer" && (
+        <Button variant="danger" onClick={onClear} style={{ padding: "6px 14px", fontSize: "13px" }}>
+          🗑️ Clear
+        </Button>
+      )}
     </div>
   );
 }

@@ -173,8 +173,9 @@ export function useDrawing(canvasRef, roomCode, myRole, uid) {
   }, [roomCode, uid]);
 
   const clearBoard = useCallback(() => {
+    if (myRole === "viewer") return;
     socket.emit("clear-board", { roomCode });
-  }, [roomCode]);
+  }, [roomCode, myRole]);
 
   return {
     // State

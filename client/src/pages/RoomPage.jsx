@@ -101,6 +101,7 @@ function RoomPage() {
           tool={tool}
           color={color}
           size={size}
+          myRole={myRole}
           onToolChange={setTool}
           onColorChange={setColor}
           onSizeChange={setSize}
