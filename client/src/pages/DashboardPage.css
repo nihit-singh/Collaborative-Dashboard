@@ -1,0 +1,68 @@
+/* DashboardPage.css - Subtle Enhancements */
+.dashboard-card-wrapper {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  alignItems: center;
+  margin-bottom: 24px;
+}
+
+.dashboard-header h3 {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.action-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 16px 0;
+}
+
+.action-divider::before,
+.action-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.action-divider::not(:empty)::before {
+  margin-right: .75em;
+}
+
+.action-divider::not(:empty)::after {
+  margin-left: .75em;
+}
+
+/* Subtle hover effects applied to wrappers for the existing components */
+.btn-hover-effect {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-hover-effect:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-hover-effect:active {
+  transform: translateY(0);
+}
+
+.input-focus-effect {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-focus-effect:focus-within {
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
